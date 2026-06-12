@@ -32,6 +32,7 @@
 
   let videoEl: HTMLVideoElement | undefined = $state();
   let videoContainerEl: HTMLDivElement | undefined = $state();
+  let headerEl: HTMLElement | undefined = $state();
 
   // Auto-crop state — insets are fractions (0..1)
   let cropInsets = $state<CropInsets>({ top: 0, bottom: 0, left: 0, right: 0 });
@@ -227,12 +228,27 @@
     return false;
   }
 
+  // If a control-bar button still holds focus (e.g. after closing a popover),
+  // drop it and swallow the keystroke so Tab/Enter/Space navigate/activate the
+  // toolbar instead of being sent to the remote machine.
+  function stealFocusFromToolbar(e: KeyboardEvent): boolean {
+    const active = document.activeElement as HTMLElement | null;
+    if (active && headerEl?.contains(active)) {
+      active.blur();
+      e.preventDefault();
+      return true;
+    }
+    return false;
+  }
+
   function onKeyDown(e: KeyboardEvent) {
     if (isTypingInUI(e)) return;
+    stealFocusFromToolbar(e);
     kvm.handleKeyDown(e);
   }
   function onKeyUp(e: KeyboardEvent) {
     if (isTypingInUI(e)) return;
+    stealFocusFromToolbar(e);
     kvm.handleKeyUp(e);
   }
 
@@ -291,7 +307,10 @@
 
 <div class="flex h-screen flex-col bg-background">
   <!-- Toolbar -->
-  <header class="flex items-center gap-1.5 border-b border-border px-3 py-1.5">
+  <header
+    bind:this={headerEl}
+    class="flex items-center gap-1.5 border-b border-border px-3 py-1.5"
+  >
     <!-- Connection badge / popover -->
     <Popover.Root>
       <Popover.Trigger>
