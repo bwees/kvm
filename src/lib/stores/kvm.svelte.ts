@@ -4,14 +4,20 @@
 
 import { SerialConnection } from '$lib/serial/connection';
 import {
+  charToHidKey,
+  getHidKeycode,
+  getModifierMask,
+  HID_MODIFIER,
+  isModifier,
+} from '$lib/serial/hid-keycodes';
+import {
+  buildAbsoluteMouseFrame,
+  buildGetInfoFrame,
   buildKeyboardFrame,
   buildKeyReleaseFrame,
-  buildAbsoluteMouseFrame,
   buildRelativeMouseFrame,
-  buildGetInfoFrame,
   type DeviceInfo,
 } from '$lib/serial/protocol';
-import { getHidKeycode, getModifierMask, isModifier, charToHidKey } from '$lib/serial/hid-keycodes';
 
 const SNIPPETS_STORAGE_KEY = 'openterface-snippets';
 const AUTOCROP_STORAGE_KEY = 'openterface-autocrop';
@@ -223,6 +229,14 @@ class KvmState {
 
     e.preventDefault();
     e.stopPropagation();
+
+    // Override Cmd+V: paste clipboard contents as typed keystrokes instead of
+    // forwarding the Cmd+V combo to the target.
+    const META_MASK = HID_MODIFIER.MetaLeft | HID_MODIFIER.MetaRight;
+    if (e.code === 'KeyV' && this.pressedModifiers & META_MASK) {
+      await this.pasteFromClipboard();
+      return;
+    }
 
     if (isModifier(e.code)) {
       this.pressedModifiers |= getModifierMask(e.code);
